@@ -77,7 +77,7 @@ Item {
             delegate: Image {
                 x: -d.width * d.column
                 y: -d.height * d.row
-                source: d.baseUrl + "/" + modelData;
+                source: "image://smooth/" + d.baseUrl + "/" + modelData;
                 asynchronous: true;
                 visible: d.page === index
             }

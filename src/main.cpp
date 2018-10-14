@@ -29,6 +29,7 @@
 #include "network/httpserver.h"
 #include "model/viewersmodel.h"
 #include "power/power.h"
+#include "util/smoothimageprovider.h"
 
 #ifndef Q_OS_ANDROID
 #include <QApplication>
@@ -122,6 +123,7 @@ int main(int argc, char *argv[])
     //Prime network manager
     QNetworkProxyFactory::setUseSystemConfiguration(true);
     NetworkManager::initialize(engine.networkAccessManager());
+    engine.addImageProvider(QLatin1String("smooth"), new SmoothImageProvider);
 
 #ifndef Q_OS_ANDROID
     QCommandLineParser parser;

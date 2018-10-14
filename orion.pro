@@ -36,7 +36,8 @@ SOURCES += src/main.cpp\
     src/model/viewersmodel.cpp \
     src/model/settingsmanager.cpp \
     src/network/httpserver.cpp \
-    src/power/power.cpp
+    src/power/power.cpp \
+    src/util/smoothimageprovider.cpp
 
 
 HEADERS  += src/model/channel.h \
@@ -60,7 +61,8 @@ HEADERS  += src/model/channel.h \
     src/model/viewersmodel.h \
     src/model/settingsmanager.h \
     src/model/singletonprovider.h \
-    src/power/power.h
+    src/power/power.h \
+    src/util/smoothimageprovider.h
 
 !android: {
     HEADERS += src/notification/notificationmanager.h
