@@ -43,10 +43,108 @@
 #include "player/mpvobject.h"
 #endif
 
-inline void noisyFailureMsgHandler(QtMsgType /*type*/, const QMessageLogContext &/*context*/, const QString &/*msg*/)
-{
+#ifdef Q_OS_WIN
+#include <io.h>
+#include <fcntl.h>
+#pragma comment(lib, "User32.lib")
+#endif
+
+void showConsole() {
+#ifdef Q_OS_WIN
+    if (GetConsoleWindow()) { return; }
+    AllocConsole();
+    HWND hwnd = GetConsoleWindow();
+    LONG_PTR style = GetWindowLongPtr(hwnd, GWL_STYLE);
+    SetWindowLongPtr(hwnd, GWL_STYLE, style & ~WS_SYSMENU);
+
+    static FILE *instream = nullptr, *outstream = nullptr, *outerrstream = nullptr;
+    std::atexit([](){
+        if (instream) {
+            fclose(instream);
+            instream = nullptr;
+        }
+        if (outstream) {
+            fclose(outstream);
+            outstream = nullptr;
+        }
+        if (GetConsoleWindow()) {
+            FreeConsole();
+        }
+    });
+    freopen_s(&instream, "CONIN$", "r", stdin);
+    freopen_s(&outstream, "CONOUT$", "w+", stdout);
+    freopen_s(&outerrstream, "CONOUT$", "w+", stderr);
+
+    std::ios::sync_with_stdio();
+
+    CONSOLE_SCREEN_BUFFER_INFO coninfo = {};
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &coninfo);
+    static const WORD MAX_CONSOLE_LINES = 8192;
+    static const WORD CONSOLE_WIDTH = 256;
+    coninfo.dwSize.Y = MAX_CONSOLE_LINES;
+    coninfo.dwSize.X = CONSOLE_WIDTH;
+    SetConsoleScreenBufferSize(GetStdHandle(STD_OUTPUT_HANDLE), coninfo.dwSize);
+
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY);
+    SetConsoleTextAttribute(GetStdHandle(STD_ERROR_HANDLE), FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY);
+
+    CONSOLE_FONT_INFOEX info = {};
+    info.cbSize = sizeof(info);
+    info.dwFontSize.Y = 14;
+    info.FontWeight = FW_NORMAL;
+    wcscpy_s(info.FaceName, L"Consolas");
+    SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), NULL, &info);
+    SetCurrentConsoleFontEx(GetStdHandle(STD_ERROR_HANDLE), NULL, &info);
+    SetConsoleOutputCP(CP_UTF8);
+#endif
+}
+
+inline void quietMsgHandler(QtMsgType /*type*/, const QMessageLogContext &/*context*/, const QString &/*msg*/) {
 
 }
+
+void errorMsgHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+{
+    QByteArray localMsg = msg.toLocal8Bit();
+    switch (type) {
+    case QtWarningMsg:
+        fprintf(stderr, "Warning: %s (%s:%u, %s)\n", localMsg.constData(), context.file, context.line, context.function);
+        break;
+    case QtCriticalMsg:
+        fprintf(stderr, "Critical: %s (%s:%u, %s)\n", localMsg.constData(), context.file, context.line, context.function);
+        break;
+    case QtFatalMsg:
+        fprintf(stderr, "Fatal: %s (%s:%u, %s)\n", localMsg.constData(), context.file, context.line, context.function);
+        break;
+    default:
+        break;
+    }
+}
+
+void allMsgHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+{
+    QByteArray localMsg = msg.toLocal8Bit();
+    switch (type) {
+    case QtDebugMsg:
+        fprintf(stdout, "Debug: %s (%s:%u, %s)\n", localMsg.constData(), context.file, context.line, context.function);
+        break;
+    case QtInfoMsg:
+        fprintf(stdout, "Info: %s (%s:%u, %s)\n", localMsg.constData(), context.file, context.line, context.function);
+        break;
+    case QtWarningMsg:
+        fprintf(stderr, "Warning: %s (%s:%u, %s)\n", localMsg.constData(), context.file, context.line, context.function);
+        break;
+    case QtCriticalMsg:
+        fprintf(stderr, "Critical: %s (%s:%u, %s)\n", localMsg.constData(), context.file, context.line, context.function);
+        break;
+    case QtFatalMsg:
+        fprintf(stderr, "Fatal: %s (%s:%u, %s)\n", localMsg.constData(), context.file, context.line, context.function);
+        break;
+    default:
+        break;
+    }
+}
+
 
 void registerQmlComponents(QObject *parent)
 {
@@ -75,13 +173,15 @@ void registerQmlComponents(QObject *parent)
 
 int main(int argc, char *argv[])
 {
+    qInstallMessageHandler(&errorMsgHandler);
+    QCoreApplication::setApplicationName("Orion");
+    QCoreApplication::setOrganizationName("orion.application");
+    QCoreApplication::setApplicationVersion(APP_VERSION);
+
     //Override QT_QUICK_CONTROLS_STYLE environment variable
     qputenv("QT_QUICK_CONTROLS_STYLE", "material");
 
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-
-    // Load app settings
-    SettingsManager::getInstance()->load();
 
     auto opengl = SettingsManager::getInstance()->opengl().toLower();
 
@@ -112,16 +212,9 @@ int main(int argc, char *argv[])
 #else
     QGuiApplication app(argc, argv);
 #endif
-    app.setApplicationVersion(APP_VERSION);
 
     const QIcon appIcon = QIcon(":/icon/orion.ico");
     app.setWindowIcon(appIcon);
-
-    QQmlApplicationEngine engine;
-
-    //Prime network manager
-    QNetworkProxyFactory::setUseSystemConfiguration(true);
-    NetworkManager::initialize(engine.networkAccessManager());
 
 #ifndef Q_OS_ANDROID
     QCommandLineParser parser;
@@ -131,16 +224,27 @@ int main(int argc, char *argv[])
 
     QCommandLineOption debugOption(QStringList() << "d" << "debug", "show debug output");
     parser.addOption(debugOption);
-    parser.process(app);
 
-#ifndef  QT_DEBUG
-    bool showDebugOutput = parser.isSet(debugOption);
+    QCommandLineOption quietOption(QStringList() << "q" << "quiet", "disable console output");
+    parser.addOption(quietOption);
 
-    if (!showDebugOutput) {
-        qInstallMessageHandler(noisyFailureMsgHandler);
+    parser.process(QCoreApplication::arguments());
+
+    if (parser.isSet(quietOption)) {
+        qInstallMessageHandler(&quietMsgHandler);
+    } else if (parser.isSet(debugOption)) {
+        showConsole();
+        qInstallMessageHandler(&allMsgHandler);
     }
 #endif
 
+    QQmlApplicationEngine engine;
+
+    //Prime network manager
+    QNetworkProxyFactory::setUseSystemConfiguration(true);
+    NetworkManager::initialize(engine.networkAccessManager());
+
+#ifndef Q_OS_ANDROID
     // detect hi dpi screens
     qDebug() << "Screens:";
     int screens = 0;
@@ -167,18 +271,23 @@ int main(int argc, char *argv[])
     rootContext->setContextProperty("g_results", ChannelManager::getInstance()->getResultsModel());
     rootContext->setContextProperty("g_games", ChannelManager::getInstance()->getGamesModel());
     rootContext->setContextProperty("vodsModel", VodManager::getInstance()->getModel());
-
-
+    QStringList player;
+#ifdef MPV_PLAYER
+    player.append("mpv");
+#endif
+#ifdef QTAV_PLAYER
+    player.append("qtav");
+#endif
+#ifdef MULTIMEDIA_PLAYER
+    player.append("multimedia");
+#endif
+    rootContext->setContextProperty("g_backends", player);
     rootContext->setContextProperty("g_instance", "main");
 
 #ifndef Q_OS_ANDROID
     //Single application solution
     QLockFile lockfile(QDir::temp().absoluteFilePath("wz0dPKqHv3vX0BBsUFZt.lock"));
     if (!lockfile.tryLock(100)) {
-        // Already running
-        if (!SettingsManager::getInstance()->multipleInstances()) {
-            return -1;
-        }
         rootContext->setContextProperty("g_instance", "child");
     }
 #endif
@@ -188,16 +297,16 @@ int main(int argc, char *argv[])
 
     // Load QML content
     engine.load(QUrl("qrc:/main.qml"));
-
-    // Trigger setting property notifications
-    SettingsManager::getInstance()->load();
-
 #ifndef Q_OS_ANDROID
     // Get QML root window, add connections
-    QQuickWindow *rootWin = (QQuickWindow *) engine.rootObjects().first();
-    if (rootWin) {
-        if (SettingsManager::getInstance()->minimizeOnStartup())
-            rootWin->hide();
+    QQuickWindow *rootWin = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+    if (!rootWin) {
+#ifdef Q_OS_WIN
+        if (GetConsoleWindow())
+            std::cin.ignore();
+#endif
+        qFatal("Main window was not opened.");
+        return -1;
     }
 #endif
 
