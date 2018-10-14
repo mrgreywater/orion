@@ -269,3 +269,44 @@ function objectAssign() {
     }
     return target;
 }
+
+var timerComponent = Qt.createQmlObject('import QtQuick 2.5; Component { Timer {} }', Qt.application);
+var freeTimers = [];
+function setTimeout(callback, timeout) {
+    var timer = freeTimers.length > 0 ? freeTimers.pop() : timerComponent.createObject(Qt.application);
+    timer.interval = timeout || 0;
+    var onTriggered = function() {
+        timer.triggered.disconnect(onTriggered);
+        timer.stop();
+        freeTimers.push(timer);
+        callback();
+    }
+    timer.triggered.connect(onTriggered);
+    timer.start();
+}
+
+var intervalTimerIndex = 0;
+var intervalTimer = {};
+function setInterval(callback, timeout) {
+    var timer = freeTimers.length > 0 ? freeTimers.pop() : timerComponent.createObject(Qt.application);
+    timer.interval = Math.max(10, timeout || 0);
+    timer.repeat = true;
+    timer.triggered.connect(callback);
+    timer.start();
+    intervalTimer[intervalTimerIndex] = {
+        timer: timer,
+        callback: callback
+    }
+    return intervalTimerIndex++;
+}
+
+function clearInterval(val) {
+    if (!intervalTimer[val]) return;
+    var timer = intervalTimer[val].timer;
+    var callback = intervalTimer[val].callback;
+    timer.triggered.disconnect(callback);
+    timer.stop();
+    timer.repeat = false;
+    freeTimers.push(timer);
+    delete intervalTimer[val];
+}
