@@ -270,6 +270,30 @@ function objectAssign() {
     return target;
 }
 
+function formatTime(seconds) {
+    seconds = Math.floor(seconds)
+    var hours = Math.floor(seconds / 3600)
+    var minutes = Math.floor(seconds / 60) % 60
+    seconds = seconds % 60
+    hours = hours < 10 ? '0' + hours : hours
+    minutes = minutes < 10 ? '0' + minutes : minutes
+    seconds = seconds < 10 ? '0' + seconds : seconds
+    return hours + ":" + minutes + ":" + seconds
+}
+
+function requestJSON(url, callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = (function(xhr) {
+        return function() {
+            if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
+                callback(JSON.parse(xhr.responseText));
+            }
+        }
+    })(xhr);
+    xhr.open('GET', url, true);
+    xhr.send('');
+}
+
 var timerComponent = Qt.createQmlObject('import QtQuick 2.5; Component { Timer {} }', Qt.application);
 var freeTimers = [];
 function setTimeout(callback, timeout) {
