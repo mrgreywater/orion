@@ -100,7 +100,7 @@ Item {
             Label {
                 z: 1
                 padding: 5
-                font.pointSize: 12
+                font.pointSize: 6 + 3 * Screen.devicePixelRatio
                 id: _text
                 wrapMode: Text.Wrap
                 width: parent.width

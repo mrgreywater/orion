@@ -16,6 +16,7 @@ import QtQuick 2.5
 import QtQuick.Controls 2.1
 import QtQuick.Controls.Material 2.1
 import QtQuick.Layouts 1.3
+import QtQuick.Window 2.4
 import "../util.js" as Util
 
 //Channel.qml
@@ -33,6 +34,7 @@ Item {
     property int containerSize: width - 10
     property int imageSize: containerSize - 20
     property bool showFavIcon: true
+    property real fontSize: 6 + 2 * Screen.devicePixelRatio // 8 with normal displays, 10 with retina
 
     id: root
     implicitWidth: 180
@@ -105,7 +107,7 @@ Item {
                     id: liveBanner
                     Layout.minimumHeight: parent.height
                     Material.foreground: "red"
-                    font.pointSize: 10
+                    font.pointSize: fontSize
                     text: "\ue061"
                     verticalAlignment: Text.AlignVCenter
                     height: parent.height
@@ -119,7 +121,7 @@ Item {
                 }
                 Label {
                     visible: online && viewers > 0
-                    font.pointSize: 10
+                    font.pointSize: fontSize
                     Layout.minimumHeight: parent.height
                     padding: 5
                     text: viewers
@@ -139,7 +141,7 @@ Item {
                     padding: 5
                     opacity: favourite ? 1 : 0
                     Material.foreground: Material.accent
-                    font.pointSize: 10
+                    font.pointSize: fontSize * 1.1
                     visible: showFavIcon && favourite
 
                     Behavior on opacity { PropertyAnimation { } }
@@ -165,7 +167,7 @@ Item {
                         visible: parent.width >= contentWidth + leftPadding + rightPadding
                         id: fullGameLabel
                         text: game
-                        font.pointSize: 10
+                        font.pointSize: fontSize
                         verticalAlignment: Text.AlignVCenter
                         horizontalAlignment: Text.AlignRight
                         padding: 5
@@ -187,7 +189,7 @@ Item {
                         visible: !fullGameLabel.visible
                         id: abbrGameLabel
                         text: abbreviate(game)
-                        font.pointSize: 10
+                        font.pointSize: fontSize
                         verticalAlignment: Text.AlignVCenter
                         horizontalAlignment: Text.AlignRight
                         padding: 5
