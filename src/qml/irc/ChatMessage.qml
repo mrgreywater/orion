@@ -30,8 +30,10 @@ Item {
     property bool isChannelNotice
     property bool isWhisper
     property string systemMessage
+    property real imgSize: Math.round(28 * Settings.textScaleFactor)
     property real fontSize: Settings.textScaleFactor * 12
     property var badgeEntries: badgeEntries
+    property font currentFont: Settings.font || appFont.name
 
     property bool showUsernameLine: !isChannelNotice || !systemMessage || (msg && msg.length > 0)
     property bool showSystemMessageLine: isChannelNotice && systemMessage != ""
@@ -56,14 +58,6 @@ Item {
         return hasRef ? res : str;
     }
 
-    onFontSizeChanged: {
-        // defer updatePositions so that bindings to the font size have a chance to recalculate before the re-layout
-        Qt.callLater(function() {
-            if (_messageLineFlow && _messageLineFlow.updatePositions)
-                _messageLineFlow.updatePositions()
-        })
-    }
-
     Label {
         id: _systemMessageLine
         anchors {
@@ -74,6 +68,7 @@ Item {
                 rightMargin: 2
             }
         }
+        font.family: currentFont
         font.bold: true
         horizontalAlignment: Qt.AlignHCenter
 
@@ -86,7 +81,6 @@ Item {
     }
 
     CustomFlow {
-      id: _messageLineFlow
       verticalAlignment: Qt.AlignVCenter
 
       anchors {
@@ -118,6 +112,7 @@ Item {
         font.pointSize: fontSize
         color: chat.colors[user.toLowerCase()]
         text: user + (isAction ? " " : ": ")
+        font.family: currentFont
         font.bold: true
         textFormat: Text.PlainText
 
@@ -135,7 +130,7 @@ Item {
           property var msgItem: msg[index]
           sourceComponent: {
             if(typeof msg[index] == "string") {
-              if (colorUserRef(msg[index]) !== msg[index]) {
+              if (replaceEmojis(colorUserRef(msg[index])) !== msg[index]) {
                 return msgUserRefLink;
               } else if (Util.isUrl(msg[index])) {
                 return msgLink;
@@ -162,6 +157,7 @@ Item {
       Label {
         verticalAlignment: Text.AlignVCenter
         color: Material.foreground
+        font.family: currentFont
         font.pointSize: fontSize
         text: msgItem
         textFormat: Text.PlainText
@@ -170,6 +166,7 @@ Item {
     property Component msgLink: Component {
       Label {
         verticalAlignment: Text.AlignVCenter
+        font.family: currentFont
         font.pointSize: fontSize
         color: Material.foreground
         linkColor: "#4286f4"
@@ -189,8 +186,9 @@ Item {
         verticalAlignment: Text.AlignVCenter
         color: Material.foreground
         linkColor: "#4286f4"
+        font.family: currentFont
         font.pointSize: fontSize
-        text: colorUserRef(Util.makeUrl(msgItem))
+        text: replaceEmojis(colorUserRef(Util.makeUrl(msgItem)), { "font-size": imgSize.toString() + "px" })
         onLinkActivated: linkActivation(link)
         textFormat: Text.RichText
         property int lastUserMessage: hoveredLink ? findLastUserMessage(hoveredLink) : -1
@@ -232,6 +230,7 @@ Item {
                   text: msgItem.textSuffix || ""
                   color: msgItem.textSuffixColor || Material.foreground
                   font.bold: true
+                  font.family: currentFont
                   font.pointSize: fontSize
                   verticalAlignment: Text.AlignVCenter
                   height: _emoteImg.height
@@ -258,8 +257,8 @@ Item {
                 id: _animatedImg
 
                 // AnimatedImage doesn't provide a sourceSize properly even when status == AnimatedImage.Ready
-                width: 28 * Settings.textScaleFactor
-                height: 28 * Settings.textScaleFactor
+                width: imgSize
+                height: imgSize
                 asynchronous: true
 
                 source: msgItem.sourceUrl
@@ -270,6 +269,7 @@ Item {
                   text: msgItem.textSuffix
                   color: msgItem.textSuffixColor
                   font.bold: true
+                  font.family: currentFont
                   font.pointSize: fontSize
                   verticalAlignment: Text.AlignVCenter
                   height: _animatedImg.height
@@ -296,12 +296,6 @@ Item {
             height: sourceSize.height / badgeEntry.devicePixelRatio * Settings.textScaleFactor
             asynchronous: true
 
-//            onStatusChanged: {
-//                if (status == Image.Ready) {
-//                    _messageLineFlow.updatePositions();
-//                }
-//            }
-
             EmoteTooltip {
                 visible: _badgeImgMouseArea.containsMouse && badgeEntry.name != null
                 text: badgeEntry.name
@@ -326,7 +320,7 @@ Item {
     function findLastUserMessage(link) {
         var u = link.replace('ref:',"").toLowerCase();
         for (var i = delegateIndex; i >= 0; i--) {
-            if (list.model.content[i].user.toLowerCase() === u) {
+            if (list.getModelData(i).user.toLowerCase() === u) {
                 return i
             }
         }
@@ -344,11 +338,11 @@ Item {
                 text = "/w " + clickedUser + " ";
             } else {
                 text = "@" + clickedUser;
-                text = _input.text === "" ? text + ', ' : ' ' + text;
+                text = _input.plainText === "" ? text + ', ' : ' ' + text;
             }
             _input.insert(_input.selectionStart, text);
             _input.forceActiveFocus()
-        } else if (link.substr(0, 4) === "ref:") {
+        } else if (link.substr(0, 4) === "ref:" && list) {
             var i = findLastUserMessage(link)
             if (i != -1) {
                 list.moveToIndex(i)

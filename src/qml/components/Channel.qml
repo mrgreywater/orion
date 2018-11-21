@@ -162,7 +162,7 @@ Item {
                     Layout.alignment: Qt.AlignRight
                     Label {
                         anchors.right: parent.right
-                        visible: parent.width >= implicitWidth
+                        visible: parent.width >= contentWidth + leftPadding + rightPadding
                         id: fullGameLabel
                         text: game
                         font.pointSize: 10

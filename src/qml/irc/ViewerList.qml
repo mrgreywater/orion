@@ -66,7 +66,7 @@ Item {
         clip: true
         delegate: Label {
             text: user
-            font.pointSize: 8
+            font.pointSize: Settings.textScaleFactor * 11
             color: chat.colors[user.toLowerCase()] || Material.foreground
         }
         

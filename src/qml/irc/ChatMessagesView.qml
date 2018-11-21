@@ -177,12 +177,16 @@ ListView {
         }
         return null
     }
+
+    function getModelData(index) {
+        return chatModel.content[index]
+    }
     
     delegate: ChatMessage {
         property int delegateIndex: index
         // see above: workaround for https://bugreports.qt.io/browse/QTBUG-12117
         // force disable binding (index changes on removal)
-        property var model: chatModel.content[index]
+        property var model: getModelData(index)
         Component.onCompleted: model = model
         user: model.user
         msg: model.message
@@ -202,11 +206,11 @@ ListView {
         anchors.right: parent.right
         IconButtonFlat {
             text: "\ue8ff"
-            onClicked: Settings.textScaleFactor += 0.15
+            onClicked: Settings.textScaleFactor += 0.05
         }
         IconButtonFlat {
             text: "\ue900"
-            onClicked: Settings.textScaleFactor -= 0.15
+            onClicked: Settings.textScaleFactor -= 0.05
         }
     }
 

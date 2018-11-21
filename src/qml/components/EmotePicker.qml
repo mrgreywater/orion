@@ -294,7 +294,8 @@ Page {
     header: ToolBar {
         Material.theme: Material.Light
         Material.background: "white"
-        padding: 5
+        leftPadding: 5
+        rightPadding: 5
 
         TextField {
             id: _filterTextInput

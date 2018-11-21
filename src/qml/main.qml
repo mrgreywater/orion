@@ -18,6 +18,7 @@ import QtQuick.Layouts 1.0
 import QtQuick.Controls 2.1
 import QtQuick.Controls.Material 2.1
 import Qt.labs.settings 1.0 as Labs
+import "util.js" as Util
 import "irc"
 import "components"
 import app.orion 1.0
@@ -208,6 +209,52 @@ ApplicationWindow {
 
         source: "fonts/NotoSans-Regular.ttf"
         name: "Noto Sans"
+    }
+
+    function hasFont(name) {
+        var families = Qt.fontFamilies()
+        for (var i = 0; i < families.length; i++) {
+            if(families[i] === name) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    property string emojiFont: {
+        // priority list of known color emoji fonts
+        var emojiFonts = [
+            "Apple Color Emoji",
+            "Segoe UI Emoji",
+            "Android Emoji",
+            "Noto Color Emoji",
+            "Emoji One",
+            "Twemoji"
+        ];
+        for (var i = 0; i < emojiFonts.length; i++) {
+            if (hasFont(emojiFonts[i])) {
+                return emojiFonts[i];
+            }
+        }
+        return appFont.name
+    }
+
+    // maybe use twemoji cdn to download emoticon images instead (or fallback)
+    function replaceEmojis(text, css) {
+        var hasEmoji = false
+        var res = text.replace(Util.getEmojiPattern(), function(match, offset) {
+            hasEmoji = true
+            var prefix = '<span style="font-family:' + emojiFont + ';'
+            if (css) {
+                for(var k in css) {
+                    var v = css[k];
+                    prefix += " " + k + ":" + v + ";"
+                }
+            }
+            prefix += '">';
+            return prefix + match + "</span>"
+        });
+        return hasEmoji ? res : text
     }
 
     Popup {

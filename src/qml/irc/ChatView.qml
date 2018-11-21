@@ -88,7 +88,7 @@ Page {
     }
 
     function sendMessage() {
-        var message = _input.text;
+        var message = _input.plainText;
         var relevantEmotes = {};
         var words = message.split(" ");
         for (var i = 0; i < words.length; i++) {
@@ -100,7 +100,7 @@ Page {
             }
         }
         chat.sendChatMessage(message, relevantEmotes)
-        _input.text = ""
+        _input.clear()
         chatList.positionViewAtEnd()
     }
 
@@ -455,7 +455,6 @@ Page {
         Material.background: rootWindow.Material.background
         Material.elevation: 10
         visible: chatContainer.currentIndex === 0 && !chat.isAnonymous
-        padding: 5
 
         ColumnLayout {
             anchors.fill: parent
@@ -464,6 +463,8 @@ Page {
                 id: _emotePicker
                 Layout.fillHeight: true
                 Layout.fillWidth: true
+                Layout.rightMargin: 5
+                Layout.leftMargin: 5
                 property real preferredHeight: 0
                 Layout.preferredHeight: preferredHeight
                 Layout.preferredWidth: parent.width
@@ -518,6 +519,8 @@ Page {
                 Layout.fillWidth: true
                 Layout.preferredWidth: parent.width
                 Layout.alignment: Qt.AlignBottom
+                Layout.leftMargin: 5
+                spacing: 0
 
                 TextArea {
                     id: _input
@@ -526,12 +529,36 @@ Page {
                     wrapMode: TextEdit.Wrap
                     activeFocusOnTab: true
 
+                    property string plainText
+                    signal textUpdated();
+                    property bool internallyChangingText: false
+
+                    renderType: Text.NativeRendering
+                    textFormat: TextEdit.RichText
+                    font.family: Settings.font || appFont.name
+
+                    onTextUpdated: {
+                        var start = selectionStart
+                        var end = selectionEnd
+                        plainText = getText(0, length).replace(/^[\n\r\s]+/g, function(match) {
+                            if (start > 0) start--;
+                            if (end > 0) end--;
+                            return '';
+                        });
+                        remove(0, length)
+                        var richText = replaceEmojis(plainText, {
+                            "font-size": Math.round(font.pointSize*1.3).toString() + "pt"
+                        });
+                        insert(0, '<p style="white-space: pre-wrap;">' + richText + "</p>");
+                        select(start, end)
+                    }
+
                     Layout.fillWidth: true
 
                     TextMenu { }
 
                     Keys.onUpPressed: {
-                        var selectedFirstLine = !getText(0, selectionStart).match('[\r\n]')
+                        var selectedFirstLine = !getText(0, selectionEnd).match(/[\r\n\x0B\x0C\u0085\u2028\u2029]+/g)
                         if (event.modifiers === Qt.NoModifier) {
                             if (selectedFirstLine) {
                                 if (!_emotePicker.visible) {
@@ -541,22 +568,8 @@ Page {
                             } else {
                                 event.accepted = false
                             }
-                        } else if (event.modifiers === Qt.ShiftModifier) {
-                            if (selectedFirstLine) {
-                                _input.select(0, selectionEnd);
-                            } else {
-                                event.accepted = false;
-                            }
                         } else {
                             event.accepted = false;
-                        }
-                    }
-
-                    Keys.onDownPressed: {
-                        if (selectionStart !== selectionEnd) {
-                            _input.select(selectionEnd, selectionEnd)
-                        } else {
-                            event.accepted = false
                         }
                     }
 
@@ -577,7 +590,11 @@ Page {
                     }
 
                     onTextChanged: {
-                        text = text.replace(/^[\n\r\s]+/g, '');
+                        if (!internallyChangingText) {
+                            internallyChangingText = true
+                            textUpdated()
+                            internallyChangingText = false
+                        }
                     }
 
                     function _onReturnPressed(event) {
@@ -586,16 +603,13 @@ Page {
                                 _emotePicker.startClosing()
                             }
 
-                            text = text.trim()
-                            if (_input.text.length > 0)
+                            plainText = plainText.trim()
+                            if (plainText.length > 0)
                                 sendMessage()
+                            event.accepted = true
                         } else {
-                            if (text.length > 0) {
-                                remove(selectionStart, selectionEnd)
-                                insert(selectionEnd, "\r\n")
-                            }
+                            event.accepted = false
                         }
-                        event.accepted = true
                     }
 
                     Keys.onReturnPressed: _onReturnPressed(event)
