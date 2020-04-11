@@ -16,11 +16,11 @@ matrix:
         - BACKEND=mpv
       compiler: gcc
     
-      #- os: linux
-      #  env:
-      #    - PLATFORM=android
-      #    - BACKEND=multimedia
-      #  compiler: gcc
+    - os: linux
+      env:
+        - PLATFORM=android
+        - BACKEND=multimedia
+      compiler: gcc
 
 cache:
   apt: true

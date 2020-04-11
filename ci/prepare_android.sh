@@ -4,8 +4,8 @@ set -e
 
 BASE_DIR=$PWD
 
-export QT_CI_PACKAGES="qt.qt5.5101.android_armv7"
-$TRAVIS_BUILD_DIR/ci/install_qt5.sh 5.10.1
+export QT_CI_PACKAGES="qt.qt5.5142.android_armv7"
+$TRAVIS_BUILD_DIR/ci/install_qt5.sh 5.14.2
 
 export NDK_VERSION=r17c
 export ANDROID_DIR=$HOME/android 
@@ -28,7 +28,7 @@ wget -nv -c https://github.com/ph4r05/android-openssl/blob/master/jni/openssl/ar
 wget -nv -c https://github.com/ph4r05/android-openssl/blob/master/jni/openssl/arch-armeabi-v7a/lib/libssl.so?raw=true -O $TRAVIS_BUILD_DIR/libs/libssl.so
 
 cat << EOM > $BASE_DIR/ci/android.env
-export QTDIR=$HOME/Qt/5.10.1/android_armv7
+export QTDIR=$HOME/Qt/5.14.2/android_armv7
 export PATH=$QTDIR/bin:$PWD/android-sdk-linux/tools:$PATH
 export ANDROID_NDK_ROOT=$PWD/android-ndk-${NDK_VERSION}
 export ANDROID_SDK_ROOT=$PWD/android-sdk-linux

@@ -4,10 +4,10 @@ environment:
   matrix:
   - platform: x64
     configuration: release
-    qt: 5.10 #version freeze until fix of https://bugreports.qt.io/browse/QTBUG-61822
-    cc: VS2017
-    QTDIR: C:\Qt\5.10\msvc2017_64
-    APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+    qt: 5.14
+    cc: VS2019
+    QTDIR: C:\Qt\5.14.1\msvc2017_64
+    APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
     
   - platform: x86
     configuration: release
@@ -31,12 +31,16 @@ init:
   - if "%platform%" == "x64" set vcarch=amd64
   - set VCREDIST=vcredist_%platform%.exe
   - if %cc%==VS2017 set VCREDIST=vc_redist.%platform%.exe
+  - if %cc%==VS2019 set VCREDIST=vc_redist.%platform%.exe
   - if %cc%==VS2017 (
       call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" %vcarch%
+    ) else if %cc%==VS2019 (
+      call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" %vcarch%
     ) else if not %cc%==MinGW (
       call "C:\Program Files (x86)\Microsoft Visual Studio %toolchain_version%.0\VC\vcvarsall.bat" %vcarch%
     )
   - set PATH=%QTDIR%\bin;%PATH%
+  - dir %QTDIR%\bin
   - if %cc%==MinGW set PATH=C:\Qt\Tools\mingw%toolchain_version%_32\bin;%PATH%
   - echo NUMBER_OF_PROCESSORS=%NUMBER_OF_PROCESSORS%
   - echo PROCESSOR_IDENTIFIER=%PROCESSOR_IDENTIFIER%
